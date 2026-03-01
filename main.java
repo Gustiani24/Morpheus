@@ -157,3 +157,56 @@ public final class Morpheus {
     // -------------------------------------------------------------------------
 
     private String ethCall(String to, String data) throws IOException {
+        String body = "{\"jsonrpc\":\"2.0\",\"method\":\"eth_call\",\"params\":[{\"to\":\"" + to + "\",\"data\":\"" + data + "\"},\"latest\"],\"id\":1}";
+        return postJson(rpcUrl, body);
+    }
+
+    private String postJson(String urlString, String jsonBody) throws IOException {
+        URL url = new URL(urlString);
+        HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+        conn.setRequestMethod("POST");
+        conn.setRequestProperty("Content-Type", "application/json");
+        conn.setDoOutput(true);
+        try (OutputStream os = conn.getOutputStream()) {
+            os.write(jsonBody.getBytes(StandardCharsets.UTF_8));
+        }
+        int code = conn.getResponseCode();
+        if (code != 200) {
+            try (InputStream err = conn.getErrorStream()) {
+                String errBody = err != null ? new String(err.readAllBytes(), StandardCharsets.UTF_8) : "";
+                throw new IOException("HTTP " + code + " " + errBody);
+            }
+        }
+        try (InputStream is = conn.getInputStream()) {
+            return new String(is.readAllBytes(), StandardCharsets.UTF_8);
+        }
+    }
+
+    private static String extractResult(String jsonResponse) {
+        if (jsonResponse == null) return null;
+        int i = jsonResponse.indexOf("\"result\":\"");
+        if (i < 0) return null;
+        i += 10;
+        int j = jsonResponse.indexOf("\"", i);
+        if (j < 0) return null;
+        return jsonResponse.substring(i, j);
+    }
+
+    // -------------------------------------------------------------------------
+    // CONTRACT VIEW CALLS (decode from 0x-prefixed hex)
+    // -------------------------------------------------------------------------
+
+    public BigInteger getOrderIdsLength() throws IOException {
+        String data = GET_ORDER_IDS_LENGTH_SELECTOR;
+        String raw = ethCall(OTC_CONTRACT_ADDRESS, data);
+        String result = extractResult(raw);
+        if (result == null || result.length() < 66) return BigInteger.ZERO;
+        return new BigInteger(result.substring(2), 16);
+    }
+
+    public String getOrderAt(BigInteger index) throws IOException {
+        String data = GET_ORDER_AT_SELECTOR + padUint256(index);
+        String raw = ethCall(OTC_CONTRACT_ADDRESS, data);
+        String result = extractResult(raw);
+        if (result == null || result.length() < 66) return null;
+        return "0x" + result.substring(2).toLowerCase();
