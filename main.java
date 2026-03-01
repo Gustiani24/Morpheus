@@ -51,3 +51,56 @@ public final class Morpheus {
     private static final String CANCEL_ORDER_SELECTOR = "0xb8c7e9d1";
     private static final String GET_ORDER_VIEW_SELECTOR = "0x7f2a1b4c";
     private static final String GET_ORDER_SUMMARIES_BATCH_SELECTOR = "0x9e3f2a1d";
+    private static final String GET_ORDER_IDS_LENGTH_SELECTOR = "0x1a2b3c4e";
+    private static final String GET_ORDER_AT_SELECTOR = "0x5d6e7f8a";
+    private static final String GET_ORDER_VIEW_BY_INDEX_SELECTOR = "0x2b4c6e8f";
+    private static final String GET_PLATFORM_STATS_SELECTOR = "0x4e5f6a7b";
+    private static final String IS_PLATFORM_PAUSED_SELECTOR = "0x8c9d0e1f";
+    private static final String MIN_ORDER_SIZE_SELECTOR = "0x1f2a3b4c";
+    private static final String FEE_PERCENT_BPS_SELECTOR = "0x5d6e7f90";
+    private static final String GET_ORDER_IDS_SELECTOR = "0x9a0b1c2d";
+
+    // -------------------------------------------------------------------------
+    // STATE
+    // -------------------------------------------------------------------------
+
+    private String rpcUrl = DEFAULT_RPC;
+    private String privateKeyHex; // optional; for sending txs
+    private final OtcRpc rpc;
+
+    public Morpheus() {
+        this.rpc = new OtcRpc(OTC_CONTRACT_ADDRESS);
+    }
+
+    public void setRpcUrl(String url) { this.rpcUrl = url != null ? url : DEFAULT_RPC; }
+    public String getRpcUrl() { return rpcUrl; }
+    public void setPrivateKeyHex(String hex) { this.privateKeyHex = hex; }
+    public boolean hasPrivateKey() { return privateKeyHex != null && !privateKeyHex.isBlank(); }
+
+    // -------------------------------------------------------------------------
+    // DATA MODELS
+    // -------------------------------------------------------------------------
+
+    public static final class OrderView {
+        public String orderId;
+        public String maker;
+        public int assetType;
+        public String assetId;
+        public BigInteger amount;
+        public BigInteger pricePerUnit;
+        public boolean isSell;
+        public BigInteger filledAmount;
+        public int status;
+        public BigInteger createdAt;
+
+        @Override
+        public String toString() {
+            return String.format("OrderView{id=%s maker=%s assetType=%d amount=%s price=%s isSell=%s filled=%s status=%d}",
+                orderId, maker, assetType, amount, pricePerUnit, isSell, filledAmount, status);
+        }
+    }
+
+    public static final class OrderSummary {
+        public String orderId;
+        public String maker;
+        public BigInteger amount;
