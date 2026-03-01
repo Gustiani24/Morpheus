@@ -210,3 +210,56 @@ public final class Morpheus {
         String result = extractResult(raw);
         if (result == null || result.length() < 66) return null;
         return "0x" + result.substring(2).toLowerCase();
+    }
+
+    public OrderView getOrderViewByIndex(BigInteger index) throws IOException {
+        String data = GET_ORDER_VIEW_BY_INDEX_SELECTOR + padUint256(index);
+        String raw = ethCall(OTC_CONTRACT_ADDRESS, data);
+        String result = extractResult(raw);
+        return decodeOrderView(result);
+    }
+
+    public OrderView getOrderView(String orderIdHex) throws IOException {
+        String data = GET_ORDER_VIEW_SELECTOR + padBytes32(orderIdHex);
+        String raw = ethCall(OTC_CONTRACT_ADDRESS, data);
+        String result = extractResult(raw);
+        return decodeOrderView(result);
+    }
+
+    private OrderView decodeOrderView(String hex) {
+        if (hex == null || hex.length() < 2) return null;
+        hex = hex.replaceFirst("^0x", "");
+        int offset = 0;
+        if (hex.length() < 64 * 10) return null;
+        OrderView v = new OrderView();
+        v.orderId = "0x" + hex.substring(offset, offset + 64).replaceFirst("^0+", "");
+        if (v.orderId.length() < 66) v.orderId = "0x" + hex.substring(offset, offset + 64);
+        offset += 64;
+        v.maker = "0x" + hex.substring(offset + 24, offset + 64);
+        offset += 64;
+        v.assetType = new BigInteger(hex.substring(offset, offset + 64), 16).intValue();
+        offset += 64;
+        v.assetId = "0x" + hex.substring(offset, offset + 64);
+        offset += 64;
+        v.amount = new BigInteger(hex.substring(offset, offset + 64), 16);
+        offset += 64;
+        v.pricePerUnit = new BigInteger(hex.substring(offset, offset + 64), 16);
+        offset += 64;
+        v.isSell = new BigInteger(hex.substring(offset, offset + 64), 16).signum() != 0;
+        offset += 64;
+        v.filledAmount = new BigInteger(hex.substring(offset, offset + 64), 16);
+        offset += 64;
+        v.status = new BigInteger(hex.substring(offset, offset + 64), 16).intValue();
+        offset += 64;
+        v.createdAt = new BigInteger(hex.substring(offset, offset + 64), 16);
+        return v;
+    }
+
+    public List<OrderView> getOrderViewsBatch(int offset, int limit) throws IOException {
+        BigInteger len = getOrderIdsLength();
+        if (len.compareTo(BigInteger.valueOf(offset)) <= 0) return Collections.emptyList();
+        int end = Math.min(offset + limit, len.intValue());
+        int batch = Math.min(limit, 48);
+        List<OrderView> list = new ArrayList<>();
+        for (int i = offset; i < end && (i - offset) < batch; i++) {
+            OrderView v = getOrderViewByIndex(BigInteger.valueOf(i));
