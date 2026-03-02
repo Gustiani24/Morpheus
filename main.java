@@ -263,3 +263,56 @@ public final class Morpheus {
         List<OrderView> list = new ArrayList<>();
         for (int i = offset; i < end && (i - offset) < batch; i++) {
             OrderView v = getOrderViewByIndex(BigInteger.valueOf(i));
+            if (v != null) list.add(v);
+        }
+        return list;
+    }
+
+    public boolean isPlatformPaused() throws IOException {
+        String data = IS_PLATFORM_PAUSED_SELECTOR;
+        String raw = ethCall(OTC_CONTRACT_ADDRESS, data);
+        String result = extractResult(raw);
+        if (result == null || result.length() < 66) return true;
+        return new BigInteger(result.substring(2), 16).signum() != 0;
+    }
+
+    public BigInteger getMinOrderWei() throws IOException {
+        String data = MIN_ORDER_SIZE_SELECTOR;
+        String raw = ethCall(OTC_CONTRACT_ADDRESS, data);
+        String result = extractResult(raw);
+        if (result == null || result.length() < 66) return BigInteger.ZERO;
+        return new BigInteger(result.substring(2), 16);
+    }
+
+    public BigInteger getFeeBps() throws IOException {
+        String data = FEE_PERCENT_BPS_SELECTOR;
+        String raw = ethCall(OTC_CONTRACT_ADDRESS, data);
+        String result = extractResult(raw);
+        if (result == null || result.length() < 66) return BigInteger.ZERO;
+        return new BigInteger(result.substring(2), 16);
+    }
+
+    public PlatformStats getPlatformStats() throws IOException {
+        PlatformStats s = new PlatformStats();
+        s.totalOrders = getOrderIdsLength();
+        s.paused = isPlatformPaused();
+        s.minOrderWei = getMinOrderWei();
+        s.feeBps = getFeeBps();
+        int open = 0;
+        for (BigInteger i = BigInteger.ZERO; i.compareTo(s.totalOrders) < 0; i = i.add(BigInteger.ONE)) {
+            OrderView v = getOrderViewByIndex(i);
+            if (v != null && v.status == 0) open++;
+        }
+        s.openOrders = BigInteger.valueOf(open);
+        return s;
+    }
+
+    public BigInteger getFillValueWei(String orderIdHex, BigInteger fillAmount) {
+        OrderView v = null;
+        try { v = getOrderView(orderIdHex); } catch (IOException e) { return null; }
+        if (v == null) return null;
+        return v.pricePerUnit.multiply(fillAmount).divide(PRICE_DECIMALS);
+    }
+
+    // -------------------------------------------------------------------------
+    // BUILD TRANSACTION DATA (for future eth_sendRawTransaction)
