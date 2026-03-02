@@ -369,3 +369,56 @@ public final class Morpheus {
     public void runGetOrder(String orderIdHex) {
         try {
             OrderView v = getOrderView(orderIdHex);
+            printOrderView(v);
+        } catch (IOException e) {
+            System.err.println("Error: " + e.getMessage());
+        }
+    }
+
+    public void runPostOrderInteractive(Scanner sc) {
+        System.out.print("Asset type (0=crypto 1=rwa): ");
+        int at = sc.nextInt();
+        sc.nextLine();
+        System.out.print("Asset ID (hex, or 0 for crypto): ");
+        String assetId = sc.nextLine().trim();
+        if (assetId.isEmpty()) assetId = "0";
+        System.out.print("Amount (wei or 1e18 units): ");
+        String amtStr = sc.nextLine().trim();
+        BigInteger amount = new BigInteger(amtStr);
+        System.out.print("Price per unit (1e18): ");
+        String priceStr = sc.nextLine().trim();
+        BigInteger price = new BigInteger(priceStr);
+        System.out.print("Is sell (true/false): ");
+        boolean isSell = sc.nextBoolean();
+        sc.nextLine();
+        String data = buildPostOrderData(BigInteger.valueOf(at), assetId, amount, price, isSell);
+        System.out.println("Calldata (for sending tx): " + data.substring(0, Math.min(66, data.length())) + "...");
+        if (!hasPrivateKey()) System.out.println("Set private key to send transaction.");
+    }
+
+    public void runFillOrderInteractive(Scanner sc) {
+        System.out.print("Order ID (0x...): ");
+        String orderId = sc.nextLine().trim();
+        System.out.print("Fill amount: ");
+        BigInteger fillAmount = new BigInteger(sc.nextLine().trim());
+        BigInteger valueWei = getFillValueWei(orderId, fillAmount);
+        if (valueWei != null) System.out.println("Required wei value: " + valueWei);
+        String data = buildFillOrderData(orderId, fillAmount);
+        System.out.println("Calldata: " + data.substring(0, Math.min(66, data.length())) + "...");
+        if (!hasPrivateKey()) System.out.println("Set private key to send transaction.");
+    }
+
+    public void runCancelOrderInteractive(Scanner sc) {
+        System.out.print("Order ID (0x...): ");
+        String orderId = sc.nextLine().trim();
+        String data = buildCancelOrderData(orderId);
+        System.out.println("Calldata: " + data);
+        if (!hasPrivateKey()) System.out.println("Set private key to send transaction.");
+    }
+
+    // -------------------------------------------------------------------------
+    // FORMATTING & VALIDATION HELPERS
+    // -------------------------------------------------------------------------
+
+    public static String statusName(int status) {
+        switch (status) {
