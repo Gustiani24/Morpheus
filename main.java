@@ -316,3 +316,56 @@ public final class Morpheus {
 
     // -------------------------------------------------------------------------
     // BUILD TRANSACTION DATA (for future eth_sendRawTransaction)
+    // -------------------------------------------------------------------------
+
+    public String buildPostOrderData(BigInteger assetType, String assetIdHex, BigInteger amount, BigInteger pricePerUnit, boolean isSell) {
+        return POST_ORDER_SELECTOR
+            + padUint256(assetType)
+            + padBytes32(assetIdHex)
+            + padUint256(amount)
+            + padUint256(pricePerUnit)
+            + encodeBool(isSell);
+    }
+
+    public String buildFillOrderData(String orderIdHex, BigInteger fillAmount) {
+        return FILL_ORDER_SELECTOR + padBytes32(orderIdHex) + padUint256(fillAmount);
+    }
+
+    public String buildCancelOrderData(String orderIdHex) {
+        return CANCEL_ORDER_SELECTOR + padBytes32(orderIdHex);
+    }
+
+    // -------------------------------------------------------------------------
+    // CLI MENU
+    // -------------------------------------------------------------------------
+
+    private static void printOrderView(OrderView v) {
+        if (v == null) { System.out.println("(null order)"); return; }
+        String side = v.isSell ? "SELL" : "BUY";
+        String asset = v.assetType == 0 ? "CRYPTO" : "RWA";
+        System.out.printf("  id=%s%n  maker=%s asset=%s %s amount=%s price=%s filled=%s status=%d%n",
+            v.orderId, v.maker, asset, side, v.amount, v.pricePerUnit, v.filledAmount, v.status);
+    }
+
+    public void runListOrders(int offset, int limit) {
+        try {
+            List<OrderView> list = getOrderViewsBatch(offset, limit);
+            System.out.println("Orders (offset=" + offset + " limit=" + limit + ") count=" + list.size());
+            for (OrderView v : list) printOrderView(v);
+        } catch (IOException e) {
+            System.err.println("Error: " + e.getMessage());
+        }
+    }
+
+    public void runPlatformStats() {
+        try {
+            PlatformStats s = getPlatformStats();
+            System.out.println("Platform: totalOrders=" + s.totalOrders + " openOrders=" + s.openOrders + " paused=" + s.paused + " minOrderWei=" + s.minOrderWei + " feeBps=" + s.feeBps);
+        } catch (IOException e) {
+            System.err.println("Error: " + e.getMessage());
+        }
+    }
+
+    public void runGetOrder(String orderIdHex) {
+        try {
+            OrderView v = getOrderView(orderIdHex);
